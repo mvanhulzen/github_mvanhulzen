@@ -55,7 +55,7 @@
         </div>
         <div id="bottompanel">
             <iframe id="frmContent"
-                src="https://www.arcgis.com/apps/dashboards/31a07fd75b1848a4bd805eda73049d51"></iframe>
+                src="https://esrinederland.maps.arcgis.com/apps/dashboards/0ea29ee3e8cc4d578a17f71d970a75d0"></iframe>
         </div>
     </div>
 </body>
@@ -63,7 +63,7 @@
 
     document.getElementById("btnGo").addEventListener("click", (evt) => {
         let pc6 = document.getElementById("txtPC").value;
-        let newUrl = `https://www.arcgis.com/apps/dashboards/31a07fd75b1848a4bd805eda73049d51#postcode=${pc6}`
+        let newUrl = `https://esrinederland.maps.arcgis.com/apps/dashboards/0ea29ee3e8cc4d578a17f71d970a75d0#pc=${pc6}`
         document.getElementById("frmContent").src = newUrl
 
     });
