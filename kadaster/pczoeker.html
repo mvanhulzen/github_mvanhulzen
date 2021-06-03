@@ -1,0 +1,73 @@
+<html>
+<header>
+    <link rel="stylesheet"
+        href="https://s3-us-west-1.amazonaws.com/patterns.esri.com/files/calcite-web/1.2.5/css/calcite-web.min.css">
+    <style>
+        html,
+        body,
+        iframe {
+            height: 100%;
+            padding: 0px;
+            margin: 0px;
+            /* overflow: hidden; */
+        }
+
+        #bodywrapper {
+            display: block;
+            height: 100%;
+        }
+
+        #toppanel {
+            padding: 5px;
+        }
+
+        #searchpanel {
+            width: 250px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #bottompanel {
+            height: calc(100% - 52px);
+        }
+
+        #frmContent {
+            width: 100%;
+            height: 100%;
+            border: hidden;
+        }
+
+        #txtPC {
+            width: 200px;
+        }
+    </style>
+</header>
+
+<body>
+    <div id="bodywrapper">
+        <div id="toppanel">
+            <div id="searchpanel" class="input-group">
+                <input class="input-group-input input-search" type="text" id="txtPC" placeholder="Vul je postcode in">
+                <span class="input-group-button">
+                    <button class="btn" id="btnGo">Go</button>
+                </span>
+            </div>
+        </div>
+        <div id="bottompanel">
+            <iframe id="frmContent"
+                src="https://www.arcgis.com/apps/dashboards/31a07fd75b1848a4bd805eda73049d51"></iframe>
+        </div>
+    </div>
+</body>
+<script>
+
+    document.getElementById("btnGo").addEventListener("click", (evt) => {
+        let pc6 = document.getElementById("txtPC").value;
+        let newUrl = `https://www.arcgis.com/apps/dashboards/31a07fd75b1848a4bd805eda73049d51#postcode=${pc6}`
+        document.getElementById("frmContent").src = newUrl
+
+    });
+
+</script>
+
+</html>
