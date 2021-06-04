@@ -46,12 +46,14 @@
 <body>
     <div id="bodywrapper">
         <div id="toppanel">
+            
             <div id="searchpanel" class="input-group">
-                <input class="input-group-input input-search" type="text" id="txtPC" placeholder="Vul je postcode in">
+                <input class="input-group-input input-search" type="text" id="txtPC" placeholder="Vul uw postcode in">
                 <span class="input-group-button">
-                    <button class="btn" id="btnGo">Go</button>
+                    <button type="submit" class="btn" id="btnGo">Ontdek</button>
                 </span>
             </div>
+        
         </div>
         <div id="bottompanel">
             <iframe id="frmContent"
@@ -62,11 +64,25 @@
 <script>
 
     document.getElementById("btnGo").addEventListener("click", (evt) => {
-        let pc6 = document.getElementById("txtPC").value;
-        let newUrl = `https://esrinederland.maps.arcgis.com/apps/dashboards/0ea29ee3e8cc4d578a17f71d970a75d0#pc=${pc6}`
-        document.getElementById("frmContent").src = newUrl
+        refreshFrame();
 
     });
+    document.getElementById("txtPC").addEventListener("keyup",(evt)=>{
+        //console.log("KeyDown",evt);
+        if(evt.keyCode == 13)
+        {
+            refreshFrame();
+        }
+
+    });
+    function refreshFrame()
+    {
+        let pc6 = document.getElementById("txtPC").value;
+        pc6 = pc6.replace(' ','');
+        let newUrl = `https://esrinederland.maps.arcgis.com/apps/dashboards/0ea29ee3e8cc4d578a17f71d970a75d0#pc=${pc6}`
+        document.getElementById("frmContent").src = newUrl
+        document.getElementById("txtPC").value = pc6;
+    }
 
 </script>
 
