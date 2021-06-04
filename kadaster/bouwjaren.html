@@ -190,7 +190,9 @@
 
                 var layer = new FeatureLayer({
                     portalItem: {
-                        id: "5a66127ecd7b4fdba6693b175eaaa7cb"
+                        //id: "78eeadbeada2474db48237dc32811c5e" //amsterdam
+                        //id: "5a66127ecd7b4fdba6693b175eaaa7cb" //deventer
+                        id: "3db849c2e0ce494d86cfc013f0493fe0" //NL
                     },
                     definitionExpression: "",
                     title: "Gebouwen",
@@ -442,7 +444,7 @@
                         }
 
                         value += 0.5;
-                        if (value > 2017) {
+                        if (value > 2021) {
                             value = 1700;
                         }
 
@@ -596,7 +598,7 @@
     <body>
         <div id="applicationDiv">
             <div id="viewDiv">
-                <div id="titleDiv" class="esri-widget">Bouwjarenkaart</div>
+                <div id="titleDiv" class="esri-widget">Bouwjarenkaart - NL</div>
                 <div id="fullScreenButton" class="esri-widget esri-widget-button">
                     <span class="esri-icon-zoom-out-fixed" aria-label="fullscreen icon"></span>
                 </div>
@@ -606,7 +608,7 @@
                 <div id="sliderInnerContainer">
                     <div id="sliderLabels">
                         <span>1700</span>
-                        <span>2017</span>
+                        <span>2021</span>
                     </div>
                     <div id="rangeWrapper">
                         <input id="slider" type="range" min="1700" max="2017" step="1" value="1950" />
