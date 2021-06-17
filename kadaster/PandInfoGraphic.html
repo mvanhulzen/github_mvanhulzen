@@ -139,7 +139,8 @@
                         ID: <span id="identificatie" class="info">XX</span><br />
                         Bouwjaar: <span id="buildyear" class="info">1970</span><br />
                         Status: <span id="buildstatus" class="info">Onbekend</span><br />
-                        Plaats: <span id="city" class="info">Onbekend</span>
+                        Plaats: <span id="city" class="info">Onbekend</span><br/>
+                        Oppervlakte: <span id="area" class="info">Onbekend</span>m2
                     </div>
                 </div>
 
@@ -174,6 +175,7 @@
             let nrofAdresses = 0;
             let streets = []
             let usageFunctions = {}
+            let sumOppervlakte = 0;
 
             console.log(`bagid: ${bagid}`)
             document.getElementById("identificatie").innerHTML = bagid;
@@ -246,6 +248,10 @@
             }
             function UpdateVerblijfsobject(vbo) {
                 gebruiksdoelen = vbo.verblijfsobject.gebruiksdoelen;
+
+                sumOppervlakte += vbo.verblijfsobject.oppervlakte;
+                document.getElementById("area").innerHTML = sumOppervlakte;
+                
                 gebruiksdoelen.forEach(doel => {
                     if (!usageFunctions[doel]) {
                         usageFunctions[doel] = 0;
