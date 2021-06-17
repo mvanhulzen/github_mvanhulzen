@@ -1,0 +1,302 @@
+<html>
+
+<head>
+    <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+    <title>Kadaster | Pand info </title>
+    <link rel="stylesheet" href="https://use.typekit.net/wxn4xwf.css?family=auto+1">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.19/esri/themes/light/main.css">
+    <style>
+        * {
+            font-family: auto-pro-new, sans-serif;
+        }
+
+        html,
+        body {
+            line-height: 1.625rem;
+            font-size: 1rem;
+            height: 100%;
+            width: 100%;
+            margin: 0px;
+            padding: 0px;
+        }
+
+        #bodywrap {
+            height: 100%;
+            /*background-color: rgb(138, 128, 148);*/
+            background-color: #FFF;
+
+        }
+
+        #header {
+
+            background-color: white;
+
+        }
+
+        #titlebar {
+            height: 105px;
+            padding: 20px;
+
+        }
+
+        #subheader {
+            font-size: 14pt;
+            height: 40px;
+            background-color: #e6f3f5;
+            font-weight: 700;
+            text-align: center;
+            color: #00387d;
+            border-top: #008296 5px solid;
+            padding-top: 10px;
+        }
+
+        #maininfo {
+            background-image: url(schutting.jpg);
+            background-repeat: no-repeat;
+            background-size: 100%;
+            background-position: center;
+
+            height: 500px;
+
+        }
+
+        #overlay {
+            background-image: url(page-intro-overlay-1920.png);
+            background-repeat: no-repeat;
+            background-position: bottom;
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: block;
+            bottom: 0px;
+            background-size: contain;
+
+        }
+
+        #basicinfo {
+            position: relative;
+            top: -450px;
+            
+            height: 280px;
+        }
+
+        .infopanel {
+            background-color: #008296;
+            color: #FFF;
+            width: 680px;
+            
+            padding: 10px;
+            font-size: 20pt;
+            margin-left:60px;
+        }
+
+        .subinfo {
+            padding-left: 10px;
+        }
+
+        .info {
+            color: #e6f3f5;
+            font-size: xx-large;
+            line-height: 25pt;
+            font-weight: 700;
+            margin-left: 20px;
+            padding-top: 10px;
+        }
+        TD
+        {
+            color:#FFF;
+            font-size:large;
+        }
+        .infoblock
+        {
+            padding-top:50px;
+        }
+        .infopanel-right
+        {
+            margin-left:50%;
+        }
+    </style>
+    <script src="https://js.arcgis.com/4.19/"></script>
+
+</head>
+
+<body>
+    <div id="bodywrap">
+        <div id="header">
+            <div id="titlebar"><img src="layout_set_logo.png">
+                <a href="?bagid=0193100000043750">Zwolle</a><a href="?bagid=0599100000701685">Rotterdam</a>
+            </div>
+
+            <div id="subheader">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus vulputate blandit
+                lacus</div>
+        </div>
+        <div id="content">
+            <div id="maininfo">
+                <span id="overlay">&nbsp;</span>
+
+                <div id="basicinfo" class="infopanel">Het verhaal van:<br />
+                    <div class="subinfo">
+                        ID: <span id="identificatie" class="info">XX</span><br />
+                        Bouwjaar: <span id="buildyear" class="info">1970</span><br />
+                        Status: <span id="buildstatus" class="info">Onbekend</span><br />
+                        Plaats: <span id="city" class="info">Onbekend</span>
+                    </div>
+                </div>
+
+            </div>
+            <div class="infoblock">
+                <div id="usages" class="infopanel infopanel-right">Gebruiksfuncties:<br />
+                    <span class="subinfo" id="usageTable">a</span>
+                </div>
+
+            </div>
+            <div class="infoblock">
+                <div id="streets" class="infopanel">Aantal unieke adressen: <span id="nrofAdresses" class="info">0</span><br/>
+                Aantal unieke straten: <span id="nrofStreets" class="info">0</span></div>
+            </div>
+            <div class="infoblock">
+                <div id="metainfo"class="infopanel infopanel-right">Aantal BAG bevragingen: <span id="nrofCalls" class="info">0</span></div>
+            </div>
+        </div>
+        <div id="footer">
+            (g) Esri Nederland & Kadaster 2021
+        </div>
+    </div>
+    <script>
+        const BAGAPIKEY = "l7ad386d8b6dc246aba17797dcbae0b61b";
+
+        require([
+            "esri/request"
+
+        ], function (esriRequest) {
+            let bagid = getParameterByName('bagid');
+            let nrofCalls = 0;
+            let nrofAdresses = 0;
+            let streets = []
+            let usageFunctions = {}
+
+            console.log(`bagid: ${bagid}`)
+            document.getElementById("identificatie").innerHTML = bagid;
+            getBAGAPIInfo("panden", bagid).then(pandinfo => {
+                console.log("Pandindfo", pandinfo.data)
+                document.getElementById("buildyear").innerHTML = pandinfo.data.pand.oorspronkelijkBouwjaar;
+                document.getElementById("buildstatus").innerHTML = pandinfo.data.pand.status;
+
+                pandsearch = `?pandIdentificatie=${bagid}`
+                getBAGAPIInfo("verblijfsobjecten", pandsearch).then(response => {
+                    console.log("vbos:", response.data);
+                    vbos = response.data._embedded.verblijfsobjecten;
+                    vbos.forEach(vbo => {
+                        console.log("Getting nummeraanduiding for ", vbo)
+                        UpdateVerblijfsobject(vbo);
+                        var hoofdadresid = vbo.verblijfsobject.heeftAlsHoofdAdres;
+                        var adresids = [hoofdadresid]
+                        if (vbo.verblijfsobject.heeftAlsNevenAdres) {
+                            vbo.verblijfsobject.heeftAlsNevenAdres.forEach(nevenAdresId => {
+                                //console.log("Nevenadresid: ",nevenAdresId)
+                                adresids.push(nevenAdresId)
+                            })
+                        }
+                        adresids.forEach(adres => {
+
+                            getBAGAPIInfo("nummeraanduidingen", adres).then(nummerresponse => {
+                                nummeraanduiding = nummerresponse.data;
+                                console.log('nummerresponse', nummeraanduiding)
+                                UpdateNummerAanduiding(nummeraanduiding)
+
+                                lichtaanid = nummeraanduiding.nummeraanduiding.ligtAan;
+                                getBAGAPIInfo('openbareruimten', lichtaanid).then(openbresult => {
+                                    console.log("openbresult", openbresult)
+                                    var streetname = openbresult.data.openbareRuimte.naam;
+                                    UpdateStreets(streetname);
+                                })
+                                lichtinid = nummeraanduiding.nummeraanduiding.ligtIn;
+                                getBAGAPIInfo("woonplaatsen", lichtinid).then(woonplaatsresponse => {
+                                    console.log("woonplaatsresponse", woonplaatsresponse);
+                                    UpdateWoonplaats(woonplaatsresponse.data);
+                                });
+
+                            })
+                        });
+                    });
+
+                })
+            });
+
+            function getBAGAPIInfo(type, id) {
+                console.log(id)
+                type = type.toLowerCase()
+                let url = `https://api.bag.kadaster.nl/lvbag/individuelebevragingen/v2/${type}/${id}`
+                console.log(url)
+                let header = { 'X-Api-Key': BAGAPIKEY, 'Accept-Crs': "epsg:28992" }
+                RaiseNrofCalls();
+                return esriRequest(url, { headers: header });
+            }
+            //             fetch(url,{method:"GET",mode:'no-cors', headers: {
+            //   'Content-Type': 'application/json'
+            //   // 'Content-Type': 'application/x-www-form-urlencoded',
+            // }}).then(response=>response.json()).then(result=>{
+            //                 console.log('fetch',result);
+
+            //             });
+
+            function RaiseNrofCalls() {
+                nrofCalls += 1;
+                document.getElementById("nrofCalls").innerHTML = nrofCalls;
+            }
+            function UpdateVerblijfsobject(vbo) {
+                gebruiksdoelen = vbo.verblijfsobject.gebruiksdoelen;
+                gebruiksdoelen.forEach(doel => {
+                    if (!usageFunctions[doel]) {
+                        usageFunctions[doel] = 0;
+                    }
+                    usageFunctions[doel] += 1;
+                    if(vbo.verblijfsobject.heeftAlsNevenAdres)
+                    {
+                        usageFunctions[doel] += vbo.verblijfsobject.heeftAlsNevenAdres.length;
+                    }
+                })
+                var sum = 0;
+                for (var el in usageFunctions) {
+                    sum += usageFunctions[el];
+                }
+
+                var resultstring = "<table>";
+                for (var usage in usageFunctions) {
+                    var percentage = Math.round((usageFunctions[usage] / sum * 100)*10)/10.0    ;
+                    resultstring += `<tr><td>${usage}</td><td>${percentage}%</td></tr>`
+                }
+                resultstring += "</table>"
+                document.getElementById("usageTable").innerHTML = resultstring;
+
+            }
+            function UpdateNummerAanduiding(naand) {
+                nrofAdresses += 1;
+                document.getElementById("nrofAdresses").innerHTML = nrofAdresses;
+
+            }
+            function UpdateStreets(streetname) {
+
+                if (!streets.includes(streetname)) {
+                    streets.push(streetname)
+
+                }
+                document.getElementById("nrofStreets").innerHTML = streets.length;
+            }
+            function UpdateWoonplaats(woonplaatsobject) {
+                document.getElementById("city").innerHTML = woonplaatsobject.woonplaats.naam;
+            }
+            function getParameterByName(name, urlString) {
+                if (urlString == null) {
+                    urlString = window.location.href;
+                }
+                var url = new URL(urlString);
+                return url.searchParams.get(name);
+
+            }
+
+        });
+    </script>
+</body>
+
+</html>
