@@ -1,0 +1,183 @@
+<html>
+<header>
+    <link rel="stylesheet"
+        href="https://s3-us-west-1.amazonaws.com/patterns.esri.com/files/calcite-web/1.2.5/css/calcite-web.min.css">
+    <style>
+        html,
+        body,
+        iframe {
+            height: 100%;
+            padding: 0px;
+            margin: 0px;
+            /* overflow: hidden; */
+        }
+
+        #bodywrapper {
+            display: block;
+            height: 100%;
+        }
+
+        #toppanel {
+            padding: 5px;
+        }
+
+        #searchpanel {
+            width: 350px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #bottompanel {
+            height: calc(100% - 52px);
+        }
+
+        #frmContent {
+            width: 100%;
+            height: 100%;
+            border: hidden;
+        }
+
+        #txtLocation {
+            width: 250px;
+        }
+        #btnLocation
+        {
+            width:36px;
+            text-align: center;
+            padding-left: 12px;
+            margin-left:1px;
+        }
+        #btnLocation:first-child
+        {
+            padding:0px 8px 0px 9px;   
+        }
+        #btnLocation>SPAN.loading{display:none;}
+        #btnLocation.spin>SPAN.icon-ui-locate{display:none;}
+        #btnLocation.spin>SPAN.loading
+        {
+            display:block;
+            animation-name: spin;
+            animation-duration: 5000ms;
+            animation-iteration-count: infinite;
+            animation-timing-function: linear; 
+        }
+        
+        @keyframes spin {
+            from {
+                transform:rotate(0deg);
+            }
+            to {
+                transform:rotate(360deg);
+            }
+        }
+    </style>
+</header>
+
+<body>
+    <div id="bodywrapper">
+        <div id="toppanel">
+            
+            <div id="searchpanel" class="input-group">
+                <input class="input-group-input input-search" type="text" id="txtLocation" placeholder="Vul een locatie in">
+                <span class="input-group-button">
+                    <button type="submit" class="btn" id="btnGo">Ontdek</button>
+                    
+                </span>
+                <span class="input-group-button">
+                    <button type="submit" class="btn" id="btnLocation"><span class="icon-ui-locate"></span><span class="icon-ui-loading-indicator loading"></span></button>
+            </span>
+            </div>
+        
+        </div>
+        <div id="bottompanel">
+            
+            <iframe id="frmContent"
+                src=""></iframe> 
+        </div>
+    </div>
+</body>
+<script>
+
+    document.getElementById("btnGo").addEventListener("click", (evt) => {
+        startSearch();
+
+    });
+    document.getElementById("txtLocation").addEventListener("keyup",(evt)=>{
+        //console.log("KeyDown",evt);
+        if(evt.keyCode == 13)
+        {
+            startSearch();
+        }
+
+    });
+
+    document.getElementById("btnLocation").addEventListener("click", (evt) => {
+        //set button to spin
+        document.getElementById("btnLocation").classList.toggle("spin");
+        
+        //start locate
+        navigator.geolocation.getCurrentPosition(pos=>{
+            console.log("pos",pos);
+            let lat = pos.coords.latitude;
+            let lon = pos.coords.longitude;
+
+            reversGeoCodeurl = `https://geodata.nationaalgeoregister.nl/locatieserver/v3/suggest?q=type:postcode&fl=postcode,weergavenaam&lat=${lat}&lon=${lon}`;
+            fetch(reversGeoCodeurl).then(response=>response.json()).then(result=>{
+                let docs = result.response.docs;
+                var pcdoc = docs.find(doc => doc.postcode);
+                if(pcdoc)
+                {
+                    document.getElementById("txtLocation").value = pcdoc.weergavenaam;
+                    refreshFrame(pcdoc.postcode);
+                    
+                }
+                document.getElementById("btnLocation").classList.remove("spin");
+
+            });
+        });
+
+        //set button to default
+
+    });
+
+    function startSearch()
+    {
+        let locationstring = document.getElementById("txtLocation").value;
+        //https://geodata.nationaalgeoregister.nl/locatieserver/v3/free?q=Gerenlanden&fl=*&fq=*
+        let newUrl = `https://geodata.nationaalgeoregister.nl/locatieserver/v3/free?q=${locationstring}&fl=*&fq=*`
+        
+        fetch(newUrl).then(response=>response.json()).then(result=>{
+            console.log("result",result);
+            if(result.response.docs.length>0) 
+            {
+                let docs = result.response.docs;
+                var pcdoc = docs.find(doc => doc.postcode);
+                if(pcdoc)
+                {
+                    console.log("pcdoc",pcdoc)
+                    let pc6 = pcdoc.postcode;
+                    document.getElementById("txtLocation").value = pcdoc.weergavenaam;
+                    refreshFrame(pc6);
+                }
+                else
+                {
+                    alert("no pc6 found");
+                }
+            }
+        
+        });
+        //https://geodata.nationaalgeoregister.nl/locatieserver/v3/suggest?q=type:postcode&lat=52.5&lon=6.1
+
+    }
+    function refreshFrame(pc6)
+    {
+        // let pc6 = document.getElementById("txtLocation").value;
+        // pc6 = pc6.replace(' ','');
+        let newUrl = `https://esrinederland.maps.arcgis.com/apps/dashboards/cb68d3dd4b45408aa65bbc7d3477d9b7#postcode=${pc6}`
+        document.getElementById("frmContent").src = newUrl
+        
+    }
+
+</script>
+
+</html>
