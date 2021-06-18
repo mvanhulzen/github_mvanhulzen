@@ -40,59 +40,83 @@
         #txtLocation {
             width: 250px;
         }
-        #btnLocation
-        {
-            width:36px;
+
+        #btnLocation {
+            width: 36px;
             text-align: center;
             padding-left: 12px;
-            margin-left:1px;
+            margin-left: 1px;
         }
-        #btnLocation:first-child
-        {
-            padding:0px 8px 0px 9px;   
+
+        #btnLocation:first-child {
+            padding: 0px 8px 0px 9px;
         }
-        #btnLocation>SPAN.loading{display:none;}
-        #btnLocation.spin>SPAN.icon-ui-locate{display:none;}
-        #btnLocation.spin>SPAN.loading
-        {
-            display:block;
+
+        #btnLocation>SPAN.loading {
+            display: none;
+        }
+
+        #btnLocation.spin>SPAN.icon-ui-locate {
+            display: none;
+        }
+
+        #btnLocation.spin>SPAN.loading {
+            display: block;
             animation-name: spin;
             animation-duration: 5000ms;
             animation-iteration-count: infinite;
-            animation-timing-function: linear; 
+            animation-timing-function: linear;
         }
-        
+
         @keyframes spin {
             from {
-                transform:rotate(0deg);
+                transform: rotate(0deg);
             }
+
             to {
-                transform:rotate(360deg);
+                transform: rotate(360deg);
             }
+        }
+
+        #logopanel {
+            padding-top: 10px;
+            display: flex;
+        }
+
+        #apptitle {
+            margin-left: auto;
+            margin-right: auto;
+            font-size: 24px;
         }
     </style>
 </header>
 
 <body>
     <div id="bodywrapper">
+        <div id="logopanel">
+            <a href="https://www.kadaster.nl" target="_blank"><img src="kadaster_logo.png" height="40" id="logo1"></a>
+            <div id="apptitle">Bouwjarenkaart Geo-dataplein</div>
+            <a href="https://www.esri.nl" target="_blank"><img src="esri_logo.jpg" id="logo2"></a>
+        </div>
         <div id="toppanel">
-            
+
             <div id="searchpanel" class="input-group">
-                <input class="input-group-input input-search" type="text" id="txtLocation" placeholder="Vul een locatie in">
+                <input class="input-group-input input-search" type="text" id="txtLocation"
+                    placeholder="Vul een locatie in">
                 <span class="input-group-button">
                     <button type="submit" class="btn" id="btnGo">Ontdek</button>
-                    
+
                 </span>
                 <span class="input-group-button">
-                    <button type="submit" class="btn" id="btnLocation"><span class="icon-ui-locate"></span><span class="icon-ui-loading-indicator loading"></span></button>
-            </span>
+                    <button type="submit" class="btn" id="btnLocation"><span class="icon-ui-locate"></span><span
+                            class="icon-ui-loading-indicator loading"></span></button>
+                </span>
             </div>
-        
+
         </div>
         <div id="bottompanel">
-            
-            <iframe id="frmContent"
-                src=""></iframe> 
+
+            <iframe id="frmContent" src=""></iframe>
         </div>
     </div>
 </body>
@@ -102,10 +126,9 @@
         startSearch();
 
     });
-    document.getElementById("txtLocation").addEventListener("keyup",(evt)=>{
+    document.getElementById("txtLocation").addEventListener("keyup", (evt) => {
         //console.log("KeyDown",evt);
-        if(evt.keyCode == 13)
-        {
+        if (evt.keyCode == 13) {
             startSearch();
         }
 
@@ -114,23 +137,22 @@
     document.getElementById("btnLocation").addEventListener("click", (evt) => {
         //set button to spin
         document.getElementById("btnLocation").classList.toggle("spin");
-        
+
         //start locate
-        navigator.geolocation.getCurrentPosition(pos=>{
-            console.log("pos",pos);
+        navigator.geolocation.getCurrentPosition(pos => {
+            console.log("pos", pos);
             let lat = pos.coords.latitude;
             let lon = pos.coords.longitude;
 
             reversGeoCodeurl = `https://geodata.nationaalgeoregister.nl/locatieserver/v3/suggest?q=type:postcode&fl=postcode,weergavenaam&lat=${lat}&lon=${lon}`;
-            fetch(reversGeoCodeurl).then(response=>response.json()).then(result=>{
+            fetch(reversGeoCodeurl).then(response => response.json()).then(result => {
                 let docs = result.response.docs;
-                
-                if(docs.length>0)
-                {
+
+                if (docs.length > 0) {
                     var pcdoc = docs[0]
                     document.getElementById("txtLocation").value = pcdoc.weergavenaam;
-                    refreshFrame(lon,lat);
-                    
+                    refreshFrame(lon, lat);
+
                 }
                 document.getElementById("btnLocation").classList.remove("spin");
 
@@ -141,45 +163,40 @@
 
     });
 
-    function startSearch()
-    {
+    function startSearch() {
         let locationstring = document.getElementById("txtLocation").value;
         //https://geodata.nationaalgeoregister.nl/locatieserver/v3/free?q=Gerenlanden&fl=*&fq=*
         let newUrl = `https://geodata.nationaalgeoregister.nl/locatieserver/v3/free?q=${locationstring}&fl=*&fq=*`
-        
-        fetch(newUrl).then(response=>response.json()).then(result=>{
-            console.log("result",result);
-            if(result.response.docs.length>0) 
-            {
+
+        fetch(newUrl).then(response => response.json()).then(result => {
+            console.log("result", result);
+            if (result.response.docs.length > 0) {
                 let docs = result.response.docs;
                 var doc = docs.find(doc => doc.centroide_ll);
-                if(doc)
-                {
-                    console.log("centroide_ll",doc.centroide_ll)
-                    var latlonstring = doc.centroide_ll.replace("POINT(","").replace(")","");
+                if (doc) {
+                    console.log("centroide_ll", doc.centroide_ll)
+                    var latlonstring = doc.centroide_ll.replace("POINT(", "").replace(")", "");
                     var coords = latlonstring.split(" ")
                     //let pc6 = pcdoc.postcode;
                     document.getElementById("txtLocation").value = doc.weergavenaam;
-                    refreshFrame(coords[0],coords[1]);
+                    refreshFrame(coords[0], coords[1]);
                 }
-                else
-                {
+                else {
                     alert("no pc6 found");
                 }
             }
-        
+
         });
         //https://geodata.nationaalgeoregister.nl/locatieserver/v3/suggest?q=type:postcode&lat=52.5&lon=6.1
 
     }
-    function refreshFrame(lon,lat)
-    {
+    function refreshFrame(lon, lat) {
         // let pc6 = document.getElementById("txtLocation").value;
         // pc6 = pc6.replace(' ','');
         //let newUrl = `https://www.arcgis.com/apps/dashboards/0b71e130037f459aab2ea6cdfd2cb4f8#pc=${pc6}`
         let newUrl = `https://github.mvanhulzen.nl/kadaster/bouwjaren.html?lat=${lat}&lon=${lon}&level=14`
         document.getElementById("frmContent").src = newUrl
-        
+
     }
 
 </script>
