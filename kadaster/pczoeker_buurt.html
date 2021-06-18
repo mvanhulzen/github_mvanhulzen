@@ -78,7 +78,7 @@
         <div id="toppanel">
             
             <div id="searchpanel" class="input-group">
-                <input class="input-group-input input-search" type="text" id="txtLocation" placeholder="Vul een locatie in" value="POINT(6.11836368 52.51868566)">
+                <input class="input-group-input input-search" type="text" id="txtLocation" placeholder="Vul een locatie in">
                 <span class="input-group-button">
                     <button type="submit" class="btn" id="btnGo">Ontdek</button>
                     
@@ -124,12 +124,11 @@
             reversGeoCodeurl = `https://geodata.nationaalgeoregister.nl/locatieserver/v3/suggest?q=type:postcode&fl=postcode,weergavenaam&lat=${lat}&lon=${lon}`;
             fetch(reversGeoCodeurl).then(response=>response.json()).then(result=>{
                 let docs = result.response.docs;
-                
-                if(docs.length>0)
+                var pcdoc = docs.find(doc => doc.postcode);
+                if(pcdoc)
                 {
-                    var pcdoc = docs[0]
                     document.getElementById("txtLocation").value = pcdoc.weergavenaam;
-                    refreshFrame(lon,lat);
+                    refreshFrame(pcdoc.postcode);
                     
                 }
                 document.getElementById("btnLocation").classList.remove("spin");
@@ -152,15 +151,13 @@
             if(result.response.docs.length>0) 
             {
                 let docs = result.response.docs;
-                var doc = docs.find(doc => doc.centroide_ll);
-                if(doc)
+                var pcdoc = docs.find(doc => doc.postcode);
+                if(pcdoc)
                 {
-                    console.log("centroide_ll",doc.centroide_ll)
-                    var latlonstring = doc.centroide_ll.replace("POINT(","").replace(")","");
-                    var coords = latlonstring.split(" ")
-                    //let pc6 = pcdoc.postcode;
-                    document.getElementById("txtLocation").value = doc.weergavenaam;
-                    refreshFrame(coords[0],coords[1]);
+                    console.log("pcdoc",pcdoc)
+                    let pc6 = pcdoc.postcode;
+                    document.getElementById("txtLocation").value = pcdoc.weergavenaam;
+                    refreshFrame(pc6);
                 }
                 else
                 {
@@ -172,12 +169,11 @@
         //https://geodata.nationaalgeoregister.nl/locatieserver/v3/suggest?q=type:postcode&lat=52.5&lon=6.1
 
     }
-    function refreshFrame(lon,lat)
+    function refreshFrame(pc6)
     {
         // let pc6 = document.getElementById("txtLocation").value;
         // pc6 = pc6.replace(' ','');
-        //let newUrl = `https://www.arcgis.com/apps/dashboards/0b71e130037f459aab2ea6cdfd2cb4f8#pc=${pc6}`
-        let newUrl = `https://github.mvanhulzen.nl/kadaster/bouwjaren.html?lat=${lat}&lon=${lon}&level=14`
+        let newUrl = `https://esrinederland.maps.arcgis.com/apps/instant/nearby/index.html?appid=7e332117e3a045ba8b9285508821f2aa&sliderDistance=1&find=${pc6}`
         document.getElementById("frmContent").src = newUrl
         
     }
