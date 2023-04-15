@@ -1,0 +1,117 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta content="IE=edge" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, user-scalable=no">
+    <title>Hot Cold</title>
+    <script type="module" src="https://js.arcgis.com/calcite-components/1.2.0/calcite.esm.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/calcite-components/1.2.0/calcite.css" />
+    <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css">
+
+    <style>
+        html,
+        body,
+        #mapdiv {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+        }
+
+        #header {
+            padding-left: 10px;
+            background-color: var(--calcite-ui-brand);
+            border-bottom: solid 1px var(--calcite-ui-brand-press);
+            color: var(--calcite-ui-foreground-3);
+            display: inline-block;
+            width: 100%;
+        }
+
+        #footer {
+            padding: 10px 5px 10px 5px;
+            background-color: var(--calcite-ui-background);
+            border-top: solid 1px var(--calcite-ui-border-1);
+        }
+
+        .esri-logo {
+            margin: 0.375 rem;
+            content: "";
+            display: inline-block;
+            background-repeat: no-repeat;
+            background-position: center;
+            background-color: transparent;
+            min-height: 30px;
+            min-width: 70px;
+            line-height: 0;
+            background-size: 100% 100%;
+            background-image: url(images/esri-logo.svg);
+        }
+
+        /*Remove the black bar from the map*/
+        .mapdiv .esri-view-surface:focus::after {
+            outline: auto 0px !important;
+        }
+
+
+        /*on a black theme change the logo*/
+        .calcite-theme-dark .esri-logo {
+            background-image: url(images/esri-logo-reversed.svg);
+        }
+
+        calcite-button {
+
+            height: 44px;
+            margin-bottom: 2px;
+        }
+    </style>
+    <script type="module">
+        // const esriConfig = {
+        //     apiKey: "AAPK64425f378c2144a3a1ba86eefe6e33f3O0YbnS5EpXK4YlYjwRImXo9rL_RjGOoLFxFLyWXA571lSjADAeiy3YSOYJ0oW4_3"
+        // };
+        import esriConfig from 'https://js.arcgis.com/4.26/@arcgis/core/config.js';
+        import Map from 'https://js.arcgis.com/4.26/@arcgis/core/Map.js';
+        import MapView from 'https://js.arcgis.com/4.26/@arcgis/core/views/MapView.js';
+        esriConfig.apiKey = "AAPK64425f378c2144a3a1ba86eefe6e33f3O0YbnS5EpXK4YlYjwRImXo9rL_RjGOoLFxFLyWXA571lSjADAeiy3YSOYJ0oW4_3";
+
+        const map = new Map({
+            basemap: "arcgis-topographic"
+        });
+        
+        const view = new MapView({
+            map: map,  // References a Map instance
+            container: "mapdiv",  // References the ID of a DOM element,
+            center:[6.1,52.5],
+            zoom: 14
+        });
+
+        document.getElementById("btn").addEventListener("click", function() {
+            if(confirm("Are you sure you want to check your location?")){
+                alert("You are at: " + view.center);
+            }
+            else{
+                alert("You are not at: " + view.center);
+            }
+        });
+
+    </script>
+</head>
+
+<body>
+    <calcite-shell content-behind>
+        <div slot="header" id="header">
+            <h2 id="header-title">Hot and Cold</h2>
+        </div>
+        <div id="mapdiv" class="mapdiv"></div>
+
+
+
+        <div slot="footer" id="footer">
+            <calcite-button color="blue" id="btn" width="full" scale="m">Check Location</calcite-button>
+            <div class="esri-logo"></div>
+        </div>
+
+    </calcite-shell>
+</body>
+
+</html>
