@@ -34,6 +34,16 @@
             border-top: solid 1px var(--calcite-ui-border-1);
         }
 
+        #header-title {
+            float: left;
+        }
+
+        #header-subtitle {
+            margin-top: 30px;
+            margin-left: 10px;
+            float: left;
+        }
+
         .esri-logo {
             margin: 0.375 rem;
             content: "";
@@ -71,28 +81,265 @@
         // };
         import esriConfig from 'https://js.arcgis.com/4.26/@arcgis/core/config.js';
         import Map from 'https://js.arcgis.com/4.26/@arcgis/core/Map.js';
+        import WebMap from 'https://js.arcgis.com/4.26/@arcgis/core/WebMap.js';
         import MapView from 'https://js.arcgis.com/4.26/@arcgis/core/views/MapView.js';
-        esriConfig.apiKey = "AAPK64425f378c2144a3a1ba86eefe6e33f3O0YbnS5EpXK4YlYjwRImXo9rL_RjGOoLFxFLyWXA571lSjADAeiy3YSOYJ0oW4_3";
+        import Locate from 'https://js.arcgis.com/4.26/@arcgis/core/widgets/Locate.js';
+        import GraphicsLayer from 'https://js.arcgis.com/4.26/@arcgis/core/layers/GraphicsLayer.js';
+        import Graphic from 'https://js.arcgis.com/4.26/@arcgis/core/Graphic.js';
+        import Point from 'https://js.arcgis.com/4.26/@arcgis/core/geometry/Point.js';
+        import Polyline from 'https://js.arcgis.com/4.26/@arcgis/core/geometry/Polyline.js';
+        import { distance, geodesicLength } from 'https://js.arcgis.com/4.26/@arcgis/core/geometry/geometryEngine.js';
 
-        const map = new Map({
-            basemap: "arcgis-topographic"
+        var destination = null;//new Point({ latitude: 52.5, longitude: 6.1, spatialReference: { wkid: 4326 } });
+        var globalTeamID = 0;
+        var winDistance = 20;
+        //esriConfig.apiKey = "AAPK64425f378c2144a3a1ba86eefe6e33f3O0YbnS5EpXK4YlYjwRImXo9rL_RjGOoLFxFLyWXA571lSjADAeiy3YSOYJ0oW4_3";
+
+        // const map = new Map({
+        //     basemap: "arcgis-topographic"
+        // });
+
+        const map = new WebMap({
+            portalItem: {
+                id: "5702a48603904da3ac73388ed85eba3f"
+            }
         });
-        
+        const tempGraphicsLayer = new GraphicsLayer();
+        map.add(tempGraphicsLayer);
+        // const pointGraphicsLayer = new GraphicsLayer();
+        // map.add(pointGraphicsLayer);
+
         const view = new MapView({
             map: map,  // References a Map instance
-            container: "mapdiv",  // References the ID of a DOM element,
-            center:[6.1,52.5],
-            zoom: 14
+            container: "mapdiv"
+            // ,center: [6.1, 52.5]
+            // ,zoom: 14
         });
 
-        document.getElementById("btn").addEventListener("click", function() {
-            if(confirm("Are you sure you want to check your location?")){
-                alert("You are at: " + view.center);
-            }
-            else{
-                alert("You are not at: " + view.center);
+        let locateWidget = new Locate({
+            view: view
+        });
+        view.when(() => {
+
+            StartGame();
+        });
+        view.ui.add(locateWidget, "top-left");
+
+        document.getElementById("btn").addEventListener("click", async function () {
+
+            if (confirm("Are you sure you want to check your location?")) {
+                //alert("You are at: " + view.center);
+                var locationResult = await getLocation();
+                await parseLocation(locationResult.coords.latitude, locationResult.coords.longitude);
+
             }
         });
+
+        var symbolColors = { "first": "green", "closer": "red", "further": "blue", "exact": "yellow" };
+        async function getLocation() {
+
+            var locationResult = await locateWidget.locate();
+
+            if (location.href.startsWith("https://localhost")) {
+                console.log("Adding random distance to location")
+                locationResult = MovePointARandomDistance(locationResult);
+            }
+            console.log(locationResult);
+
+            return locationResult;
+
+        }
+        async function StartGame() {
+            //get team id
+            //find target layer
+            let fl = view.map.layers.find(function (layer) {
+                return layer.title === "Targets";
+            });
+            console.log(fl);
+            var teamid = -1;
+            var target = null;
+
+            if (window.location.search) {
+                const urlParams = new URLSearchParams(window.location.search);
+                teamid = urlParams.get('teamid');
+                var targetid = urlParams.get('targetid');
+                var results = await fl.queryFeatures({where:`OBJECTID=${targetid}`, outFields: ["*"], returnGeometry: true, outSpatialReference: { wkid: 4326 }});
+                target = results.features[0];
+                console.log(`Found target from url: ${target.attributes.Name}, teamid: ${teamid} `)
+            }
+            
+            if(teamid==-1 && target==null){
+
+
+                var [teamid, target] = await GetNewTeamIdAndRandomTarget(fl);
+                console.log(`Found target from random: ${target.attributes.Name}, teamid: ${teamid} `)
+                let url = new URL(window.location.href);
+                url.searchParams.set('teamid', teamid);
+                url.searchParams.set('targetid', target.attributes.OBJECTID);
+                window.history.pushState({}, '', url);
+            }
+            document.getElementById("teamid").innerHTML = teamid;
+            document.getElementById("targetname").innerHTML = target.attributes.Name;
+
+            destination = target;
+            globalTeamID = teamid;
+            console.log(destination);
+
+            let viewMeasureLayer = view.map.layers.find(function (layer) {
+                return layer.title === "ViewMeasurements";
+            });
+            viewMeasureLayer.definitionExpression = `TeamID = '${teamid}'`;
+            
+            //get target
+        }
+        async function GetNewTeamIdAndRandomTarget(targetLayer) {
+            //determine highest team id
+            let queryResults = await targetLayer.queryFeatures({ where: "1=1", outFields: ["*"], returnGeometry: true, outSpatialReference: { wkid: 4326 } });
+
+            let highestTeamId = 0;
+            queryResults.features.forEach(function (feature) {
+                if (Number(feature.attributes.TeamID) > highestTeamId) {
+                    highestTeamId = Number(feature.attributes.TeamID);
+                }
+            });
+
+            highestTeamId++;
+            console.log("Teamnumber:", highestTeamId)
+            //get random target (from one that has no team yet)
+            let randomTarget= null;
+            for(let i=0;i<queryResults.features.length;i++){
+                console.log(queryResults.features[i].attributes.TeamID);
+                if(queryResults.features[i].attributes.TeamID==null){
+                    console.log("Found target without team");
+                    randomTarget = queryResults.features[i];
+                }
+              
+            }
+            
+            console.log("Target:", randomTarget);
+            //update target with team id
+            randomTarget.attributes.TeamID = highestTeamId;
+            await targetLayer.applyEdits({ updateFeatures: [{"attributes":randomTarget.attributes}] });
+            return [highestTeamId, randomTarget];
+        }
+        async function parseLocation(latitude, longitude) {
+
+            let viewMeasureLayer = view.map.layers.find(function (layer) {
+                return layer.title === "ViewMeasurements";
+            });
+            var color = symbolColors["first"];
+            var symbol = {
+                type: "simple-marker",
+                color: color,
+                outline: {
+                    color: [255, 255, 255],
+                    width: 2
+                }
+            };
+            var newPoint = new Point({ latitude: latitude, longitude: longitude, spatialReference: { wkid: 4326 } });
+            //var distanceToDestination = distance(newPoint, destination, "meters");
+
+            var templine = new Polyline({
+                paths: [
+                    [destination.geometry.longitude, destination.geometry.latitude],
+                    [newPoint.longitude, newPoint.latitude]
+                ],
+                spatialReference: { wkid: 4326 }
+            });
+
+            var distanceToDestination = geodesicLength(templine, "meters");
+
+            var hotorCold = "Start";
+            var newSequence = 1;
+            var existingpoints = await viewMeasureLayer.queryFeatures({ "where": `TeamID='${globalTeamID}'`, "outFields": ["*"], "returnGeometry": true, "outSpatialReference": { "wkid": 4326 }, "orderByFields": ["PointSequence"] });
+            if (existingpoints.features.length > 0) {
+                var lastPoint = existingpoints.features[existingpoints.features.length - 1];
+
+                var lastDistance = lastPoint.attributes.DistanceInM;
+                var lastSequence = lastPoint.attributes.PointSequence;
+                console.log(`Last point: ${lastSequence}, distance: ${lastDistance}`)
+                newSequence = lastSequence + 1;
+                if (distanceToDestination < lastDistance) {
+                    color = symbolColors["closer"];
+                    hotorCold = "Hot";
+                }
+                else if (distanceToDestination > lastDistance) {
+                    color = symbolColors["further"];
+                    hotorCold = "Cold";
+                }
+                else {
+                    color = symbolColors["exact"];
+                    hotorCold = "Exact";
+                }
+                if(distanceToDestination<winDistance){
+                    color = symbolColors["exact"];
+                    hotorCold = "Win";
+                }
+                var progressline = new Polyline({
+                    paths: [
+                        [lastPoint.geometry.longitude, lastPoint.geometry.latitude],
+                        [newPoint.longitude, newPoint.latitude]
+                    ],
+                    spatialReference: { wkid: 4326 }
+                });
+                tempGraphicsLayer.add(new Graphic({
+                    geometry: progressline,
+                    symbol: {
+                        type: "simple-line",
+                        color: color,
+                        width: 2,
+                        style: "short-dot"
+                    }
+                }));
+            }
+            symbol.color = color;
+            var graphic = new Graphic({
+                geometry: {
+                    type: "point",
+                    longitude: longitude,
+                    latitude: latitude
+                },
+                attributes: {
+                    "TargetOID": destination.attributes.OBJECTID,
+                    "DistanceInM": distanceToDestination,
+                    "TeamID": globalTeamID,
+                    "HotOrCold": hotorCold,
+                    "PointSequence": newSequence
+                }
+            });
+            let measureLayer = view.map.layers.find(function (layer) {
+                return layer.title === "Measurements";
+            });
+            measureLayer.applyEdits({ addFeatures: [graphic] });
+            viewMeasureLayer.refresh();
+            //pointGraphicsLayer.add(graphic);
+
+            // tempGraphicsLayer.add(new Graphic({
+            //     geometry: templine,
+            //     symbol: {
+            //         type: "simple-line",
+            //         color: color,
+            //         width: 1
+            //     }
+            // }));
+
+        }
+
+        function MovePointARandomDistance(locationResult) {
+            var randomX = Math.random() * 0.001;
+            var randomY = Math.random() * 0.001;
+            var randomXSign = Math.random() > 0.5 ? 1 : -1;
+            var randomYSign = Math.random() > 0.5 ? 1 : -1;
+            var new_longitude = locationResult.coords.longitude + (randomX * randomXSign);
+            var new_latitude = locationResult.coords.latitude + (randomY * randomYSign);
+
+            return { coords: { latitude: new_latitude, longitude: new_longitude } };
+
+
+
+
+        }
+
 
     </script>
 </head>
@@ -101,6 +348,8 @@
     <calcite-shell content-behind>
         <div slot="header" id="header">
             <h2 id="header-title">Hot and Cold</h2>
+            <div id="header-subtitle">Teamid: <span id="teamid">-1</span>, Target: <span id="targetname">Unknown</span>
+            </div>
         </div>
         <div id="mapdiv" class="mapdiv"></div>
 
