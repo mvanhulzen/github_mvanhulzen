@@ -7,7 +7,7 @@
     <title>Hot Cold</title>
     <script type="module" src="https://js.arcgis.com/calcite-components/1.2.0/calcite.esm.js"></script>
     <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/calcite-components/1.2.0/calcite.css" />
-    <link rel="stylesheet" href="https://js.arcgis.com/4.26/esri/themes/light/main.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css">
 
     <style>
         html,
@@ -79,20 +79,24 @@
         // const esriConfig = {
         //     apiKey: "AAPK64425f378c2144a3a1ba86eefe6e33f3O0YbnS5EpXK4YlYjwRImXo9rL_RjGOoLFxFLyWXA571lSjADAeiy3YSOYJ0oW4_3"
         // };
-        import esriConfig from 'https://js.arcgis.com/4.26/@arcgis/core/config.js';
-        import Map from 'https://js.arcgis.com/4.26/@arcgis/core/Map.js';
-        import WebMap from 'https://js.arcgis.com/4.26/@arcgis/core/WebMap.js';
-        import MapView from 'https://js.arcgis.com/4.26/@arcgis/core/views/MapView.js';
-        import Locate from 'https://js.arcgis.com/4.26/@arcgis/core/widgets/Locate.js';
-        import GraphicsLayer from 'https://js.arcgis.com/4.26/@arcgis/core/layers/GraphicsLayer.js';
-        import Graphic from 'https://js.arcgis.com/4.26/@arcgis/core/Graphic.js';
-        import Point from 'https://js.arcgis.com/4.26/@arcgis/core/geometry/Point.js';
-        import Polyline from 'https://js.arcgis.com/4.26/@arcgis/core/geometry/Polyline.js';
-        import { distance, geodesicLength } from 'https://js.arcgis.com/4.26/@arcgis/core/geometry/geometryEngine.js';
+        import esriConfig from 'https://js.arcgis.com/4.27/@arcgis/core/config.js';
+        import Map from 'https://js.arcgis.com/4.27/@arcgis/core/Map.js';
+        import WebMap from 'https://js.arcgis.com/4.27/@arcgis/core/WebMap.js';
+        import MapView from 'https://js.arcgis.com/4.27/@arcgis/core/views/MapView.js';
+        import Locate from 'https://js.arcgis.com/4.27/@arcgis/core/widgets/Locate.js';
+        import Track from 'https://js.arcgis.com/4.27/@arcgis/core/widgets/Track.js'
+        import GraphicsLayer from 'https://js.arcgis.com/4.27/@arcgis/core/layers/GraphicsLayer.js';
+        import Graphic from 'https://js.arcgis.com/4.27/@arcgis/core/Graphic.js';
+        import Point from 'https://js.arcgis.com/4.27/@arcgis/core/geometry/Point.js';
+        import Polyline from 'https://js.arcgis.com/4.27/@arcgis/core/geometry/Polyline.js';
+        import { distance, geodesicLength } from 'https://js.arcgis.com/4.27/@arcgis/core/geometry/geometryEngine.js';
+        import Legend from 'https://js.arcgis.com/4.27/@arcgis/core/widgets/Legend.js';
+        import Expand from 'https://js.arcgis.com/4.27/@arcgis/core/widgets/Expand.js';
 
         var destination = null;//new Point({ latitude: 52.5, longitude: 6.1, spatialReference: { wkid: 4326 } });
         var globalTeamID = 0;
         var winDistance = 20;
+        var globalGameID = 0;
         //esriConfig.apiKey = "AAPK64425f378c2144a3a1ba86eefe6e33f3O0YbnS5EpXK4YlYjwRImXo9rL_RjGOoLFxFLyWXA571lSjADAeiy3YSOYJ0oW4_3";
 
         // const map = new Map({
@@ -101,7 +105,7 @@
 
         const map = new WebMap({
             portalItem: {
-                id: "5702a48603904da3ac73388ed85eba3f"
+                id: "4a8cf32babdf40b08e833ada1efcc3c9"
             }
         });
         const tempGraphicsLayer = new GraphicsLayer();
@@ -116,29 +120,52 @@
             // ,zoom: 14
         });
 
-        let locateWidget = new Locate({
+        let locateWidget = new Track({
             view: view
         });
+
+        let legend = new Legend({
+            view: view
+           
+        });
+        let legendExpand = new Expand({
+            view: view,
+            content: legend
+           
+        });
+        view.ui.add(legendExpand, "bottom-left");
+
         view.when(() => {
 
+
             StartGame();
+            locateWidget.start();
+           
         });
         view.ui.add(locateWidget, "top-left");
 
         document.getElementById("btn").addEventListener("click", async function () {
 
             if (confirm("Are you sure you want to check your location?")) {
+
                 //alert("You are at: " + view.center);
                 var locationResult = await getLocation();
-                await parseLocation(locationResult.coords.latitude, locationResult.coords.longitude);
+                if (locationResult) {
+                    await parseLocation(locationResult.coords.latitude, locationResult.coords.longitude);
+                }
 
             }
         });
 
-        var symbolColors = { "first": "green", "closer": "red", "further": "blue", "exact": "yellow" };
         async function getLocation() {
 
-            var locationResult = await locateWidget.locate();
+            if (!locateWidget.tracking) {
+                showAlert("Error", "Starting location tracking, please hold!", "warning");
+                locateWidget.start();
+            }
+            var newLocation = locateWidget.graphic.geometry;
+            var locationResult = { coords: { latitude: newLocation.latitude, longitude: newLocation.longitude } };
+
 
             if (location.href.startsWith("https://localhost")) {
                 console.log("Adding random distance to location")
@@ -152,49 +179,83 @@
         async function StartGame() {
             //get team id
             //find target layer
-            let fl = view.map.layers.find(function (layer) {
-                return layer.title === "Targets";
+            let targetFL = view.map.layers.find(function (layer) {
+                return layer.title === "Target";
             });
-            console.log(fl);
-            var teamid = -1;
+
+            let gameFL = view.map.tables.find(function (layer) {
+                return layer.title === "Game";
+            });
+            console.log(targetFL);
+            var teamid = null;
             var target = null;
+            var targetid = null;
+            var gameid = null;
 
             if (window.location.search) {
                 const urlParams = new URLSearchParams(window.location.search);
+
+                gameid = urlParams.get('gameid');
                 teamid = urlParams.get('teamid');
-                var targetid = urlParams.get('targetid');
-                var results = await fl.queryFeatures({where:`OBJECTID=${targetid}`, outFields: ["*"], returnGeometry: true, outSpatialReference: { wkid: 4326 }});
-                target = results.features[0];
-                console.log(`Found target from url: ${target.attributes.Name}, teamid: ${teamid} `)
+                if (gameid != null) {
+                    var gameResults = await gameFL.queryFeatures({ where: `OBJECTID=${gameid}`, outFields: ["*"] });
+                    if (gameResults.features.length > 0) {
+                        teamid = gameResults.features[0].attributes.TeamID;
+                        targetid = gameResults.features[0].attributes.TargetOID;
+
+                        console.log(`Found teamid from url: ${teamid} `)
+                    }
+
+                    var results = await targetFL.queryFeatures({ where: `OBJECTID=${targetid}`, outFields: ["*"], returnGeometry: true, outSpatialReference: { wkid: 4326 } });
+                    if (results.features.length > 0) {
+                        target = results.features[0];
+                        console.log(`Found target from url: ${target.attributes.Name}, teamid: ${teamid} `)
+                    }
+                }
             }
-            
-            if(teamid==-1 && target==null){
+            if (teamid == null) {
+                teamid = await GetNewTeamId();
+            }
+
+            if (target == null) {
 
 
-                var [teamid, target] = await GetNewTeamIdAndRandomTarget(fl);
-                console.log(`Found target from random: ${target.attributes.Name}, teamid: ${teamid} `)
+                target = await GetNewTarget(teamid);
+                gameid = await CreateGame(teamid, target.attributes.OBJECTID);
+                console.log(`Found target from random: ${target.attributes.Name}, teamid: ${teamid}, gameid: ${gameid}`);
                 let url = new URL(window.location.href);
+                url.searchParams.set('gameid', gameid);
                 url.searchParams.set('teamid', teamid);
-                url.searchParams.set('targetid', target.attributes.OBJECTID);
                 window.history.pushState({}, '', url);
+            }
+            if (teamid == -1 || target == null || gameid == null) {
+                showAlert("Error", "Could not find teamid or target, please contact game host!", "danger");
             }
             document.getElementById("teamid").innerHTML = teamid;
             document.getElementById("targetname").innerHTML = target.attributes.Name;
 
             destination = target;
             globalTeamID = teamid;
+            globalGameID = gameid;
             console.log(destination);
 
-            let viewMeasureLayer = view.map.layers.find(function (layer) {
-                return layer.title === "ViewMeasurements";
+            let measureLayer = view.map.layers.find(function (layer) {
+                return layer.title === "Measurement";
             });
-            viewMeasureLayer.definitionExpression = `TeamID = '${teamid}'`;
-            
+            measureLayer.definitionExpression = `GameOID = '${gameid}'`;
+            let measureLineLayer = view.map.layers.find(function (layer) {
+                return layer.title === "MeasureLines";
+            });
+            measureLineLayer.definitionExpression = `GameOID = '${gameid}'`;
+
+
             //get target
         }
-        async function GetNewTeamIdAndRandomTarget(targetLayer) {
-            //determine highest team id
-            let queryResults = await targetLayer.queryFeatures({ where: "1=1", outFields: ["*"], returnGeometry: true, outSpatialReference: { wkid: 4326 } });
+        async function GetNewTeamId() {
+            let gameFL = view.map.tables.find(function (layer) {
+                return layer.title === "Game";
+            });
+            let queryResults = await gameFL.queryFeatures({ where: "1=1", outFields: ["*"] });
 
             let highestTeamId = 0;
             queryResults.features.forEach(function (feature) {
@@ -202,40 +263,83 @@
                     highestTeamId = Number(feature.attributes.TeamID);
                 }
             });
-
             highestTeamId++;
             console.log("Teamnumber:", highestTeamId)
-            //get random target (from one that has no team yet)
-            let randomTarget= null;
-            for(let i=0;i<queryResults.features.length;i++){
-                console.log(queryResults.features[i].attributes.TeamID);
-                if(queryResults.features[i].attributes.TeamID==null){
-                    console.log("Found target without team");
-                    randomTarget = queryResults.features[i];
-                }
-              
-            }
-            
-            console.log("Target:", randomTarget);
-            //update target with team id
-            randomTarget.attributes.TeamID = highestTeamId;
-            await targetLayer.applyEdits({ updateFeatures: [{"attributes":randomTarget.attributes}] });
-            return [highestTeamId, randomTarget];
+            return highestTeamId;
+
         }
+        async function GetNewTarget(teamid) {
+            let targetFL = view.map.layers.find(function (layer) {
+                return layer.title === "Target";
+            });
+            let gameFL = view.map.tables.find(function (layer) {
+                return layer.title === "Game";
+            });
+
+
+            let queryResults = await gameFL.queryFeatures({ where: `TeamID='${teamid}'`, outFields: ["*"] });
+            var listOfPreviousTargetIDs = queryResults.features.map(function (feature) {
+                return feature.attributes.TargetOID;
+            });
+
+            console.log(listOfPreviousTargetIDs);
+            if (listOfPreviousTargetIDs.length == 0) {
+                listOfPreviousTargetIDs.push(-1);
+            }
+            var targetResults = await targetFL.queryFeatures({ where: `OBJECTID NOT IN (${listOfPreviousTargetIDs.join(',')}) AND ACTIVE=1`, outFields: ["*"], returnGeometry: true, outSpatialReference: { wkid: 4326 } });
+
+            if (targetResults.features.length == 0) {
+                showAlert("Error", "Could not find a target without a team, please contact game host!", "danger");
+            }
+            var randomTarget = targetResults.features[Math.floor(Math.random() * targetResults.features.length)];
+
+            return randomTarget;
+            // let randomTarget = null;
+            // for (let i = 0; i < queryResults.features.length; i++) {
+            //     console.log(queryResults.features[i].attributes.TeamID);
+            //     if (queryResults.features[i].attributes.TeamID == null) {
+            //         console.log("Found target without team");
+            //         randomTarget = queryResults.features[i];
+            //         break;
+            //     }
+            // }
+            // if (randomTarget == null) {
+            //     showAlert("Error", "Could not find a target without a team, please contact game host!", "danger");
+            // }
+            // randomTarget.attributes.TeamID = teamid;
+            // await targetFL.applyEdits({ addFeatures: [randomTarget] });
+            // return randomTarget;
+
+        }
+
+        async function CreateGame(teamid, TargetOID) {
+            var gameId = null;
+            let gameFL = view.map.tables.find(function (layer) {
+                return layer.title === "Game";
+            });
+            debugger;
+            var result = await gameFL.applyEdits({ addFeatures: [{ "attributes": { "TeamID": teamid, "TargetOID": TargetOID } }] });
+
+            if (result.addFeatureResults.length == 0 || result.addFeatureResults[0].error) {
+                showAlert("Error", "Could not create game, please contact game host!", "danger");
+            }
+            else {
+                gameId = result.addFeatureResults[0].objectId;
+
+            }
+            console.log(result);
+            return gameId;
+        }
+
         async function parseLocation(latitude, longitude) {
 
-            let viewMeasureLayer = view.map.layers.find(function (layer) {
-                return layer.title === "ViewMeasurements";
+            let measureLayer = view.map.layers.find(function (layer) {
+                return layer.title === "Measurement";
             });
-            var color = symbolColors["first"];
-            var symbol = {
-                type: "simple-marker",
-                color: color,
-                outline: {
-                    color: [255, 255, 255],
-                    width: 2
-                }
-            };
+            let measureLineLayer = view.map.layers.find(function (layer) {
+                return layer.title === "MeasureLines";
+            });
+
             var newPoint = new Point({ latitude: latitude, longitude: longitude, spatialReference: { wkid: 4326 } });
             //var distanceToDestination = distance(newPoint, destination, "meters");
 
@@ -251,7 +355,9 @@
 
             var hotorCold = "Start";
             var newSequence = 1;
-            var existingpoints = await viewMeasureLayer.queryFeatures({ "where": `TeamID='${globalTeamID}'`, "outFields": ["*"], "returnGeometry": true, "outSpatialReference": { "wkid": 4326 }, "orderByFields": ["PointSequence"] });
+            var existingpoints = await measureLayer.queryFeatures({ "where": `GameOID=${globalGameID}`, "outFields": ["*"], "returnGeometry": true, "outSpatialReference": { "wkid": 4326 }, "orderByFields": ["PointSequence"] });
+            
+            //check if the point is hot or cold
             if (existingpoints.features.length > 0) {
                 var lastPoint = existingpoints.features[existingpoints.features.length - 1];
 
@@ -260,19 +366,19 @@
                 console.log(`Last point: ${lastSequence}, distance: ${lastDistance}`)
                 newSequence = lastSequence + 1;
                 if (distanceToDestination < lastDistance) {
-                    color = symbolColors["closer"];
+
                     hotorCold = "Hot";
                 }
                 else if (distanceToDestination > lastDistance) {
-                    color = symbolColors["further"];
+
                     hotorCold = "Cold";
                 }
                 else {
-                    color = symbolColors["exact"];
+
                     hotorCold = "Exact";
                 }
-                if(distanceToDestination<winDistance){
-                    color = symbolColors["exact"];
+                if (distanceToDestination < winDistance) {
+
                     hotorCold = "Win";
                 }
                 var progressline = new Polyline({
@@ -282,17 +388,9 @@
                     ],
                     spatialReference: { wkid: 4326 }
                 });
-                tempGraphicsLayer.add(new Graphic({
-                    geometry: progressline,
-                    symbol: {
-                        type: "simple-line",
-                        color: color,
-                        width: 2,
-                        style: "short-dot"
-                    }
-                }));
+
             }
-            symbol.color = color;
+            //save results
             var graphic = new Graphic({
                 geometry: {
                     type: "point",
@@ -300,6 +398,7 @@
                     latitude: latitude
                 },
                 attributes: {
+                    "GameOID": globalGameID,
                     "TargetOID": destination.attributes.OBJECTID,
                     "DistanceInM": distanceToDestination,
                     "TeamID": globalTeamID,
@@ -307,11 +406,27 @@
                     "PointSequence": newSequence
                 }
             });
-            let measureLayer = view.map.layers.find(function (layer) {
-                return layer.title === "Measurements";
+
+            var results = await measureLayer.applyEdits({ addFeatures: [graphic] });
+            measureLayer.refresh();
+            var measureOid = results.addFeatureResults[0].objectId;
+            var measureLine = new Graphic({
+                geometry: progressline,
+                attributes: {
+                    "GameOID": globalGameID,
+                    "MeasurementOID": measureOid,
+                    "TeamID": globalTeamID,
+                    "HotOrCold": hotorCold,
+                    "TargetOID": destination.attributes.OBJECTID
+                }
             });
-            measureLayer.applyEdits({ addFeatures: [graphic] });
-            viewMeasureLayer.refresh();
+            var results = await measureLineLayer.applyEdits({ addFeatures: [measureLine] });
+            measureLineLayer.refresh();
+            if(hotorCold == "Win")
+            {
+                GameWon();
+            }
+
             //pointGraphicsLayer.add(graphic);
 
             // tempGraphicsLayer.add(new Graphic({
@@ -325,6 +440,13 @@
 
         }
 
+        function GameWon()
+        {
+            showAlert("Congratulations!", "You found the target!", "success", false);
+            
+
+        }
+
         function MovePointARandomDistance(locationResult) {
             var randomX = Math.random() * 0.001;
             var randomY = Math.random() * 0.001;
@@ -334,10 +456,16 @@
             var new_latitude = locationResult.coords.latitude + (randomY * randomYSign);
 
             return { coords: { latitude: new_latitude, longitude: new_longitude } };
+        }
 
+        function showAlert(title, message, kind = "info", autoclose=true) {
+            let alert = document.querySelector("calcite-alert");
+            alert.setAttribute("auto-close", autoclose);
+            alert.setAttribute("open", "");
+            alert.setAttribute("kind", kind);
 
-
-
+            document.getElementById("alertTitle").innerHTML = title;
+            document.getElementById("alertMessage").innerHTML = message;
         }
 
 
@@ -353,7 +481,7 @@
         </div>
         <div id="mapdiv" class="mapdiv"></div>
 
-
+       
 
         <div slot="footer" id="footer">
             <calcite-button color="blue" id="btn" width="full" scale="m">Check Location</calcite-button>
@@ -361,6 +489,15 @@
         </div>
 
     </calcite-shell>
+    <calcite-popover heading="New Game" label="About this data" open="true" referenceElement="btn">
+        <p style="padding:12px;margin:0;">
+            <calcite-button color="blue" id="btnNewGame" width="full" scale="m">New Game</calcite-button>
+        </p>
+    </calcite-popover>
+    <calcite-alert icon="data-clock-chart" kind="brand" auto-close="true" label="A report alert">
+        <div slot="title" id="alertTitle">Trail Camera Report </div>
+        <div slot="message" id="alertMessage">We thought you might want to take a look</div>
+    </calcite-alert>
 </body>
 
 </html>
