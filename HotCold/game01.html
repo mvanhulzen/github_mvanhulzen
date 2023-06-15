@@ -167,7 +167,8 @@
                     //remove gameid from url
                     url.searchParams.delete('gameid');
                     window.history.pushState({}, '', url);
-                    await StartGame();
+                    StartGame();
+                    document.getElementById("winmodel").removeAttribute("open");
                 }
         });
         document.getElementById("btnNewLocation").addEventListener("click", async function () {
@@ -203,7 +204,7 @@
 
         }
         async function StartGame() {
-            document.getElementById("winmodel").removeAttribute("open");
+            //document.getElementById("winmodel").removeAttribute("open");
             //get team id
             //find target layer
             let targetFL = view.map.layers.find(function (layer) {
@@ -448,11 +449,8 @@
         {
             //add attribute open to winmodel
             document.getElementById("winmodel").setAttribute("open", "");
-
-            //remove attribute open from game model
-            
-            
-
+            //get target name
+            document.getElementById("foundtargetname").innerHTML = destination.attributes.Name;
         }
 
         function MovePointARandomDistance(locationResult) {
@@ -475,8 +473,7 @@
             document.getElementById("alertTitle").innerHTML = title;
             document.getElementById("alertMessage").innerHTML = message;
         }
-
-
+       
     </script>
 </head>
 
@@ -490,11 +487,12 @@
         </div>
        
         <div id="mapdiv" class="mapdiv"></div>
-        <calcite-modal aria-labelledby="modal-title" id="winmodel" escape-disabled slot="modals" kind="success" open scale="s" width="s" outside-close-disabled close-button-disabled>
+        <calcite-modal aria-labelledby="modal-title" id="winmodel" escape-disabled slot="modals" kind="success" scale="s" width="s" outside-close-disabled close-button-disabled>
             <div slot="header" id="modal-title">
                 &#x1F389;&#x1F389;Congratulations! &#x1F389;&#x1F389;
             </div>
             <div slot="content">
+                <span id="found">You found the target: <span id="foundtargetname"></span>!</span><br/>
                 Do you want to play another game?
             </div>
       
