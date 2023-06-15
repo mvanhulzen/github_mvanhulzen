@@ -5,8 +5,8 @@
     <meta content="IE=edge" http-equiv="X-UA-Compatible">
     <meta name="viewport" content="width=device-width, user-scalable=no">
     <title>Hot Cold</title>
-    <script type="module" src="https://js.arcgis.com/calcite-components/1.2.0/calcite.esm.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/calcite-components/1.2.0/calcite.css" />
+    <script type="module" src="https://js.arcgis.com/calcite-components/1.4.2/calcite.esm.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://js.arcgis.com/calcite-components/1.4.2/calcite.css" />
     <link rel="stylesheet" href="https://js.arcgis.com/4.27/esri/themes/light/main.css">
 
     <style>
@@ -74,6 +74,12 @@
             height: 44px;
             margin-bottom: 2px;
         }
+
+        /* calcite-notice
+        {
+            padding-top:25%;
+            position: absolute;
+        } */
     </style>
     <script type="module">
         // const esriConfig = {
@@ -142,9 +148,29 @@
             locateWidget.start();
            
         });
-        view.ui.add(locateWidget, "top-left");
+        
+        view.on("click",(evt)=>{
+            if (location.href.startsWith("https://localhost")) {
+                console.log(evt.mapPoint);
+                var lon = evt.mapPoint.longitude;
+                var lat = evt.mapPoint.latitude;
+                parseLocation(lat,lon);
+            }
+        });
 
-        document.getElementById("btn").addEventListener("click", async function () {
+        view.ui.add(locateWidget, "top-left");
+        document.getElementById("btnStartNewGame").addEventListener("click", async function () {
+                
+                if (confirm("Are you sure you want to start a new game?")) {
+    
+                    let url = new URL(window.location.href);
+                    //remove gameid from url
+                    url.searchParams.delete('gameid');
+                    window.history.pushState({}, '', url);
+                    await StartGame();
+                }
+        });
+        document.getElementById("btnNewLocation").addEventListener("click", async function () {
 
             if (confirm("Are you sure you want to check your location?")) {
 
@@ -177,6 +203,7 @@
 
         }
         async function StartGame() {
+            document.getElementById("winmodel").removeAttribute("open");
             //get team id
             //find target layer
             let targetFL = view.map.layers.find(function (layer) {
@@ -289,26 +316,12 @@
             var targetResults = await targetFL.queryFeatures({ where: `OBJECTID NOT IN (${listOfPreviousTargetIDs.join(',')}) AND ACTIVE=1`, outFields: ["*"], returnGeometry: true, outSpatialReference: { wkid: 4326 } });
 
             if (targetResults.features.length == 0) {
-                showAlert("Error", "Could not find a target without a team, please contact game host!", "danger");
+                showAlert("Error", "Could not find a new target for your team, please contact game host!", "danger");
             }
             var randomTarget = targetResults.features[Math.floor(Math.random() * targetResults.features.length)];
 
             return randomTarget;
-            // let randomTarget = null;
-            // for (let i = 0; i < queryResults.features.length; i++) {
-            //     console.log(queryResults.features[i].attributes.TeamID);
-            //     if (queryResults.features[i].attributes.TeamID == null) {
-            //         console.log("Found target without team");
-            //         randomTarget = queryResults.features[i];
-            //         break;
-            //     }
-            // }
-            // if (randomTarget == null) {
-            //     showAlert("Error", "Could not find a target without a team, please contact game host!", "danger");
-            // }
-            // randomTarget.attributes.TeamID = teamid;
-            // await targetFL.applyEdits({ addFeatures: [randomTarget] });
-            // return randomTarget;
+            
 
         }
 
@@ -427,22 +440,17 @@
                 GameWon();
             }
 
-            //pointGraphicsLayer.add(graphic);
-
-            // tempGraphicsLayer.add(new Graphic({
-            //     geometry: templine,
-            //     symbol: {
-            //         type: "simple-line",
-            //         color: color,
-            //         width: 1
-            //     }
-            // }));
+            
 
         }
 
         function GameWon()
         {
-            showAlert("Congratulations!", "You found the target!", "success", false);
+            //add attribute open to winmodel
+            document.getElementById("winmodel").setAttribute("open", "");
+
+            //remove attribute open from game model
+            
             
 
         }
@@ -473,31 +481,41 @@
 </head>
 
 <body>
-    <calcite-shell content-behind>
+    
+    <calcite-shell>
         <div slot="header" id="header">
             <h2 id="header-title">Hot and Cold</h2>
             <div id="header-subtitle">Teamid: <span id="teamid">-1</span>, Target: <span id="targetname">Unknown</span>
             </div>
         </div>
-        <div id="mapdiv" class="mapdiv"></div>
-
        
-
+        <div id="mapdiv" class="mapdiv"></div>
+        <calcite-modal aria-labelledby="modal-title" id="winmodel" escape-disabled slot="modals" kind="success" open scale="s" width="s" outside-close-disabled close-button-disabled>
+            <div slot="header" id="modal-title">
+                &#x1F389;&#x1F389;Congratulations! &#x1F389;&#x1F389;
+            </div>
+            <div slot="content">
+                Do you want to play another game?
+            </div>
+      
+            <calcite-button slot="primary" width="full" id="btnStartNewGame">
+                Start new game
+            </calcite-button>
+        </calcite-modal>
+        
+        <calcite-alert icon="data-clock-chart" kind="brand" auto-close="true" label="A lert" slot="alerts">
+            <div slot="title" id="alertTitle">T</div>
+            <div slot="message" id="alertMessage">M</div>
+        </calcite-alert>
         <div slot="footer" id="footer">
-            <calcite-button color="blue" id="btn" width="full" scale="m">Check Location</calcite-button>
+            <calcite-button color="blue" id="btnNewLocation" width="full" scale="m">Check Location</calcite-button>
             <div class="esri-logo"></div>
         </div>
-
+       
     </calcite-shell>
-    <calcite-popover heading="New Game" label="About this data" open="true" referenceElement="btn">
-        <p style="padding:12px;margin:0;">
-            <calcite-button color="blue" id="btnNewGame" width="full" scale="m">New Game</calcite-button>
-        </p>
-    </calcite-popover>
-    <calcite-alert icon="data-clock-chart" kind="brand" auto-close="true" label="A report alert">
-        <div slot="title" id="alertTitle">Trail Camera Report </div>
-        <div slot="message" id="alertMessage">We thought you might want to take a look</div>
-    </calcite-alert>
+   
+    
+   
 </body>
 
 </html>
